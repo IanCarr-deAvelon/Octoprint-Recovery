@@ -10,10 +10,36 @@ from __future__ import absolute_import
 # Take a look at the documentation on what other plugin mixins are available.
 
 import octoprint.plugin
+import logging
 
 class RecoverPlugin(octoprint.plugin.SettingsPlugin,
                     octoprint.plugin.AssetPlugin,
-                    octoprint.plugin.TemplatePlugin):
+                    octoprint.plugin.TemplatePlugin,
+                    octoprint.plugin.EventHandlerPlugin):
+
+        def __init__(self):
+            self.ian_debug=True
+            self.log="/home/ian/.octoprint/logs/recovery.log"
+            self.progress_file="/home/ian/.octoprint/logs/progress.log"
+            self.progress=open(self.progress_file,"wc")
+
+        def on_event(self,event, payload):
+            logger = logging.getLogger("recovery")
+            logger.setLevel(logging.INFO)
+            fh = logging.FileHandler(self.log)
+            fh.setLevel(logging.INFO)
+            logger.addHandler(fh)
+            if event == "PrintStarted":
+                self.progress.close()
+                self.progress=open(self.progress_file,"wc")
+                self.progress.write("origin : "+str(payload["origin"])+"\n")
+                self.progress.write("name : "+str(payload["name"])+"\n")
+                self.progress.flush()
+            if event == "ZChange":
+                self.progress.write("Z"+str(payload["new"])+"\n")
+                self.progress.flush()
+
+
 
 	##~~ SettingsPlugin mixin
 
@@ -66,9 +92,17 @@ __plugin_name__ = "Recover Plugin"
 # compatibility flags according to what Python versions your plugin supports!
 #__plugin_pythoncompat__ = ">=2.7,<3" # only python 2
 #__plugin_pythoncompat__ = ">=3,<4" # only python 3
-#__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
+__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
 
 def __plugin_load__():
+        logger = logging.getLogger("recovery")
+        logger.setLevel(logging.INFO)
+        fh = logging.FileHandler("/home/ian/.octoprint/logs/recovery.log")
+        fh.setLevel(logging.INFO)
+        logger.addHandler(fh)
+        logger.info("IAN loading")
+
+
 	global __plugin_implementation__
 	__plugin_implementation__ = RecoverPlugin()
 
@@ -76,4 +110,12 @@ def __plugin_load__():
 	__plugin_hooks__ = {
 		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
 	}
+
+logger = logging.getLogger("recovery")
+logger.setLevel(logging.INFO)
+fh = logging.FileHandler("/home/ian/.octoprint/logs/recovery.log")
+fh.setLevel(logging.INFO)
+logger.addHandler(fh)
+logger.info("IAN looking")
+
 
